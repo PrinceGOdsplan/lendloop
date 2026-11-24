@@ -51,6 +51,30 @@ export const payloadFor = internalQuery({
   },
 });
 
+/**
+ * Records that a notification was NOT sent because this deployment has no n8n
+ * configured (e.g. a public demo). This is a neutral, visible state, not an error,
+ * and it never blocks the user's action.
+ */
+export const recordSkipped = internalMutation({
+  args: { requestId: v.id("requests"), event: eventValidator },
+  handler: async (ctx, { requestId, event }) => {
+    const dedupeKey = `${notificationKey(requestId, event)}:skipped`;
+    const existing = await ctx.db
+      .query("automationEvents")
+      .withIndex("by_dedupe", (q) => q.eq("dedupeKey", dedupeKey))
+      .unique();
+    if (existing) return;
+    await ctx.db.insert("automationEvents", {
+      requestId,
+      type: "notification_skipped",
+      dedupeKey,
+      message: "Notification not sent: automation isn't configured on this deployment",
+      createdAt: Date.now(),
+    });
+  },
+});
+
 export const recordFailure = internalMutation({
   args: { requestId: v.id("requests"), event: eventValidator, reason: v.string() },
   handler: async (ctx, { requestId, event, reason }) => {
@@ -87,14 +111,10 @@ export const deliver = internalAction({
     const url = process.env.N8N_REQUEST_WEBHOOK_URL;
     const secret = process.env.LENDLOOP_TO_N8N_SECRET;
     if (!url || !secret) {
-      console.warn(
+      console.info(
         `[notify] skipped ${event} for ${requestId}: N8N_REQUEST_WEBHOOK_URL / LENDLOOP_TO_N8N_SECRET not set`,
       );
-      await ctx.runMutation(internal.notifications.recordFailure, {
-        requestId,
-        event,
-        reason: "automation not configured",
-      });
+      await ctx.runMutation(internal.notifications.recordSkipped, { requestId, event });
       return;
     }
 

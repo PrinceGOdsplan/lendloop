@@ -35,13 +35,18 @@ export function StatusPill({ status, overdue }: { status: RequestRow["status"]; 
   return <Pill tone={statusTone[status]}>{label}</Pill>;
 }
 
+const ACTIVITY_ICON: Record<string, string> = {
+  notification_failed: "⚠",
+  notification_skipped: "ⓘ",
+};
+
 export function Activity({ items }: { items: RequestRow["activity"] }) {
   if (items.length === 0) return null;
   return (
     <ul className="mt-3 space-y-1 border-t border-stone-100 pt-3 text-xs text-stone-500">
       {items.map((a, i) => (
         <li key={i} className={a.type === "notification_failed" ? "text-red-700" : undefined}>
-          <span aria-hidden>{a.type === "notification_failed" ? "⚠" : "⚙"}</span> {a.message} ·{" "}
+          <span aria-hidden>{ACTIVITY_ICON[a.type] ?? "⚙"}</span> {a.message} ·{" "}
           <time dateTime={new Date(a.createdAt).toISOString()}>{timeAgo(a.createdAt)}</time>
         </li>
       ))}
