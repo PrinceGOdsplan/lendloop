@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { Logo } from "@/components/Logo";
+import { connection } from "next/server";
 import { preloadQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { PublicToolList } from "@/components/PublicToolList";
 
 async function preloadPublicTools() {
+  // Always render per request so the list reflects live availability.
+  await connection();
   try {
     return await preloadQuery(api.tools.listPublic);
   } catch (err) {
