@@ -3,14 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { actorOf, requireUser } from "./lib/auth";
-import {
-  LIMITS,
-  canEditTool,
-  canRemoveTool,
-  isToolAvailable,
-  normaliseText,
-  todayUtc,
-} from "./lib/rules";
+import { LIMITS, canEditTool, canRemoveTool, isToolAvailable, normaliseText, todayUtc } from "./lib/rules";
 import { categoryValidator, conditionValidator } from "./schema";
 
 async function activeLoansFor(ctx: QueryCtx, toolId: Id<"tools">) {
@@ -25,9 +18,7 @@ async function listLiveTools(ctx: QueryCtx, category?: Doc<"tools">["category"])
   if (category) {
     return await ctx.db
       .query("tools")
-      .withIndex("by_removed_category", (q) =>
-        q.eq("removedAt", undefined).eq("category", category),
-      )
+      .withIndex("by_removed_category", (q) => q.eq("removedAt", undefined).eq("category", category))
       .order("desc")
       .take(200);
   }
@@ -198,6 +189,9 @@ export const remove = mutation({
           attempt: 1,
         });
       }
+    }
+    if (!isOwner) {
+      await ctx.db.insert("adminEvents", { actorId: viewer._id, action: "listing_removed", toolId, createdAt: now });
     }
     await ctx.db.patch(toolId, {
       removedAt: now,

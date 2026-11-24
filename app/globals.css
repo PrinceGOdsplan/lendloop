@@ -2,14 +2,89 @@
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Surfaces and ink */
+  --color-canvas: #fafaf9;
+  --color-surface: #ffffff;
+  --color-ink: #1c1917;
+  --color-ink-2: #44403c;
+  --color-muted: #57534e;
+  --color-line: #e7e5e4;
+  --color-field: #78716c;
+  --color-brand: #047857;
+  --color-brand-ink: #065f46;
+
+  /* Status tones: text / background / border */
+  --color-pending: #92400e;
+  --color-pending-bg: #fffbeb;
+  --color-pending-line: #fcd34d;
+  --color-onloan: #065f46;
+  --color-onloan-bg: #ecfdf5;
+  --color-onloan-line: #6ee7b7;
+  --color-overdue: #b91c1c;
+  --color-overdue-bg: #fef2f2;
+  --color-overdue-line: #fca5a5;
+  --color-returned: #075985;
+  --color-returned-bg: #f0f9ff;
+  --color-returned-line: #7dd3fc;
+  --color-declined: #57534e;
+  --color-declined-bg: #f5f5f4;
+  --color-declined-line: #d6d3d1;
+
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px -8px rgb(28 25 23 / 0.08);
 }
 
 @layer base {
-input, select, textarea {
-  @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20;
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    @apply w-full rounded-[10px] border border-field bg-white px-3 text-[15px] text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/25;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select {
+    @apply h-10;
+  }
+
+  textarea {
+    @apply py-2;
+  }
+
+  label {
+    @apply block text-sm font-medium text-ink-2;
+  }
+
+  a,
+  button,
+  summary {
+    @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+  }
+
+  dialog::backdrop {
+    background: rgb(28 25 23 / 0.45);
+  }
 }
 
-label {
-  @apply block text-sm font-medium text-stone-700;
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
+.toast-in {
+  animation: toast-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in {
+    animation: none;
+  }
 }

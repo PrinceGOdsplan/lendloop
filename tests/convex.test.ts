@@ -13,7 +13,13 @@ function setup() {
   const t = convexTest(schema, modules);
   const as = (name: string, email: string) =>
     t.withIdentity({ name, email, tokenIdentifier: `https://issuer|${name}`, subject: name });
-  return { t, alice: as("Alice", "alice@example.com"), bob: as("Bob", "bob@example.com"), carol: as("Carol", "carol@example.com"), as };
+  return {
+    t,
+    alice: as("Alice", "alice@example.com"),
+    bob: as("Bob", "bob@example.com"),
+    carol: as("Carol", "carol@example.com"),
+    as,
+  };
 }
 
 async function makeUsers(s: ReturnType<typeof setup>) {
@@ -24,7 +30,12 @@ async function makeAdmin(s: ReturnType<typeof setup>) {
   await s.t.mutation(internal.users.setRole, { email: "carol@example.com", role: "admin" });
 }
 
-const drill = { name: "Cordless drill", category: "power_tools" as const, condition: "good" as const, description: "18V with two batteries" };
+const drill = {
+  name: "Cordless drill",
+  category: "power_tools" as const,
+  condition: "good" as const,
+  description: "18V with two batteries",
+};
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -84,7 +95,9 @@ describe("listings ownership", () => {
     const s = setup();
     await makeUsers(s);
     const toolId = await s.alice.mutation(api.tools.create, drill);
-    await expect(s.bob.mutation(api.tools.update, { toolId, ...drill, name: "Mine now" })).rejects.toThrow(/own listings/);
+    await expect(s.bob.mutation(api.tools.update, { toolId, ...drill, name: "Mine now" })).rejects.toThrow(
+      /own listings/,
+    );
     await expect(s.bob.mutation(api.tools.remove, { toolId })).rejects.toThrow(/own listings/);
     await s.alice.mutation(api.tools.update, { toolId, ...drill, name: "  Drill   v2 " });
     const tool = await s.t.run((ctx) => ctx.db.get(toolId));
@@ -95,7 +108,9 @@ describe("listings ownership", () => {
     const s = setup();
     await makeUsers(s);
     await expect(s.alice.mutation(api.tools.create, { ...drill, name: "   " })).rejects.toThrow(/required/);
-    await expect(s.alice.mutation(api.tools.create, { ...drill, description: "x".repeat(501) })).rejects.toThrow(/at most/);
+    await expect(s.alice.mutation(api.tools.create, { ...drill, description: "x".repeat(501) })).rejects.toThrow(
+      /at most/,
+    );
   });
 
   it("filters the signed-in list by category and never exposes owner email", async () => {
@@ -114,27 +129,41 @@ describe("borrowing lifecycle", () => {
     const s = setup();
     await makeUsers(s);
     const toolId = await s.alice.mutation(api.tools.create, drill);
-    await expect(s.alice.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" })).rejects.toThrow(/own tool/);
+    await expect(
+      s.alice.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" }),
+    ).rejects.toThrow(/own tool/);
     const req = await s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" });
-    await expect(s.bob.mutation(api.requests.decide, { requestId: req, decision: "approved" })).rejects.toThrow(/owner/);
-    await expect(s.carol.mutation(api.requests.decide, { requestId: req, decision: "approved" })).rejects.toThrow(/owner/);
+    await expect(s.bob.mutation(api.requests.decide, { requestId: req, decision: "approved" })).rejects.toThrow(
+      /owner/,
+    );
+    await expect(s.carol.mutation(api.requests.decide, { requestId: req, decision: "approved" })).rejects.toThrow(
+      /owner/,
+    );
     await expect(s.alice.mutation(api.requests.markReturned, { requestId: req })).rejects.toThrow(/pending/);
     await s.alice.mutation(api.requests.decide, { requestId: req, decision: "approved" });
     await expect(s.carol.mutation(api.requests.markReturned, { requestId: req })).rejects.toThrow(/owner or borrower/);
     await s.alice.mutation(api.requests.markReturned, { requestId: req });
-    await expect(s.alice.mutation(api.requests.decide, { requestId: req, decision: "declined" })).rejects.toThrow(/Cannot change/);
+    await expect(s.alice.mutation(api.requests.decide, { requestId: req, decision: "declined" })).rejects.toThrow(
+      /Cannot change/,
+    );
   });
 
   it("blocks overlapping approved loans and past dates", async () => {
     const s = setup();
     await makeUsers(s);
     const toolId = await s.alice.mutation(api.tools.create, drill);
-    await expect(s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-20", endDate: "2026-11-26" })).rejects.toThrow(/past/);
+    await expect(
+      s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-20", endDate: "2026-11-26" }),
+    ).rejects.toThrow(/past/);
     const r1 = await s.bob.mutation(api.requests.create, { toolId, startDate: "2026-12-01", endDate: "2026-12-05" });
     const r2 = await s.carol.mutation(api.requests.create, { toolId, startDate: "2026-12-04", endDate: "2026-12-08" });
     await s.alice.mutation(api.requests.decide, { requestId: r1, decision: "approved" });
-    await expect(s.alice.mutation(api.requests.decide, { requestId: r2, decision: "approved" })).rejects.toThrow(/overlap/);
-    await expect(s.carol.mutation(api.requests.create, { toolId, startDate: "2026-12-05", endDate: "2026-12-06" })).rejects.toThrow(/overlap/);
+    await expect(s.alice.mutation(api.requests.decide, { requestId: r2, decision: "approved" })).rejects.toThrow(
+      /overlap/,
+    );
+    await expect(
+      s.carol.mutation(api.requests.create, { toolId, startDate: "2026-12-05", endDate: "2026-12-06" }),
+    ).rejects.toThrow(/overlap/);
   });
 
   it("shows requests only to their parties", async () => {
@@ -156,7 +185,9 @@ describe("admin role (enforced in Convex)", () => {
     const me = await s.alice.query(api.users.me, {});
     await expect(s.bob.query(api.requests.allLoans, {})).rejects.toThrow(/Admin/);
     await expect(s.bob.query(api.admin.lenders, {})).rejects.toThrow(/Admin/);
-    await expect(s.bob.mutation(api.admin.setTrustedLender, { userId: me!._id, trusted: true })).rejects.toThrow(/Admin/);
+    await expect(s.bob.mutation(api.admin.setTrustedLender, { userId: me!._id, trusted: true })).rejects.toThrow(
+      /Admin/,
+    );
   });
 
   it("admins can remove any listing, view all loans and mark trusted lenders", async () => {
@@ -191,6 +222,81 @@ describe("admin role (enforced in Convex)", () => {
   });
 });
 
+describe("admin oversight and audit trail", () => {
+  it("overview and audit trail reject non-admins", async () => {
+    const s = setup();
+    await makeUsers(s);
+    await expect(s.bob.query(api.admin.overview, {})).rejects.toThrow(/Admin access required/);
+    await expect(s.bob.query(api.admin.auditTrail, {})).rejects.toThrow(/Admin access required/);
+  });
+
+  it("overview counts every status and returns display names only", async () => {
+    const s = setup();
+    await makeUsers(s);
+    await makeAdmin(s);
+    const toolId = await s.alice.mutation(api.tools.create, drill);
+    const pending = await s.bob.mutation(api.requests.create, {
+      toolId,
+      startDate: "2026-11-26",
+      endDate: "2026-11-27",
+    });
+    const approved = await s.bob.mutation(api.requests.create, {
+      toolId,
+      startDate: "2026-11-24",
+      endDate: "2026-11-25",
+    });
+    await s.alice.mutation(api.requests.decide, { requestId: approved, decision: "approved" });
+    const overview = await s.carol.query(api.admin.overview, {});
+    expect(overview.counts).toMatchObject({ pending: 1, onLoan: 1, overdue: 0, returned: 0, declined: 0, listings: 1 });
+    expect(overview.rows.map((r) => r._id).sort()).toEqual([pending, approved].sort());
+    expect(overview.rows[0]).toMatchObject({ borrowerName: "Bob", ownerName: "Alice", toolId });
+    expect(JSON.stringify(overview)).not.toContain("@example.com");
+  });
+
+  it("records trust changes and admin removals, but not owner deletes", async () => {
+    const s = setup();
+    await makeUsers(s);
+    await makeAdmin(s);
+    const own = await s.alice.mutation(api.tools.create, drill);
+    const other = await s.alice.mutation(api.tools.create, { ...drill, name: "Ladder" });
+    const [lender] = await s.carol.query(api.admin.lenders, {});
+    await s.carol.mutation(api.admin.setTrustedLender, { userId: lender._id, trusted: true });
+    await s.carol.mutation(api.admin.setTrustedLender, { userId: lender._id, trusted: false });
+    await s.alice.mutation(api.tools.remove, { toolId: own });
+    await s.carol.mutation(api.tools.remove, { toolId: other });
+    const trail = await s.carol.query(api.admin.auditTrail, {});
+    expect(trail.map((e) => e.action).sort()).toEqual(["listing_removed", "trusted_set", "trusted_unset"]);
+    expect(trail.find((e) => e.action === "listing_removed")).toMatchObject({ actorName: "Carol", toolName: "Ladder" });
+    expect(trail.find((e) => e.action === "trusted_set")).toMatchObject({ targetName: "Alice" });
+  });
+});
+
+describe("reviewer seed", () => {
+  it("is gated by LENDLOOP_ALLOW_SEED, idempotent and schedules nothing", async () => {
+    const s = setup();
+    const user = s.as("Demo User", "demo-user+clerk_test@example.com");
+    const admin = s.as("Demo Admin", "demo-admin+clerk_test@example.com");
+    await user.mutation(api.users.store, {});
+    await admin.mutation(api.users.store, {});
+    delete process.env.LENDLOOP_ALLOW_SEED;
+    await expect(s.t.mutation(internal.seed.reviewerScenario, {})).rejects.toThrow(/Seeding is disabled/);
+    process.env.LENDLOOP_ALLOW_SEED = "true";
+    try {
+      expect(await s.t.mutation(internal.seed.reviewerScenario, {})).toEqual({ created: 5 });
+      expect(await s.t.mutation(internal.seed.reviewerScenario, {})).toEqual({ created: 0 });
+      const incoming = await user.query(api.requests.incoming, {});
+      expect(incoming.map((r) => r.status).sort()).toEqual(["approved", "approved", "pending", "returned"]);
+      expect(incoming.filter((r) => r.overdue)).toHaveLength(1);
+      const adminIncoming = await admin.query(api.requests.incoming, {});
+      expect(adminIncoming).toHaveLength(1);
+      const scheduled = await s.t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+      expect(scheduled).toHaveLength(0);
+    } finally {
+      delete process.env.LENDLOOP_ALLOW_SEED;
+    }
+  });
+});
+
 async function signedFetch(
   t: ReturnType<typeof convexTest>,
   method: "GET" | "POST",
@@ -201,7 +307,11 @@ async function signedFetch(
   const { timestamp, signature } = await signRequest({ secret, method, path, body });
   return t.fetch(path, {
     method,
-    headers: { "x-lendloop-timestamp": timestamp, "x-lendloop-signature": signature, "content-type": "application/json" },
+    headers: {
+      "x-lendloop-timestamp": timestamp,
+      "x-lendloop-signature": signature,
+      "content-type": "application/json",
+    },
     body: method === "POST" ? body : undefined,
   });
 }
@@ -222,9 +332,17 @@ describe("n8n HTTP endpoints", () => {
     const { s } = await overdueLoan();
     expect((await s.t.fetch("/n8n/overdue-loans", { method: "GET" })).status).toBe(401);
     expect((await signedFetch(s.t, "GET", "/n8n/overdue-loans", "", "wrong-secret")).status).toBe(401);
-    const { timestamp, signature } = await signRequest({ secret: SECRET, method: "GET", path: "/n8n/overdue-loans", body: "" });
+    const { timestamp, signature } = await signRequest({
+      secret: SECRET,
+      method: "GET",
+      path: "/n8n/overdue-loans",
+      body: "",
+    });
     vi.setSystemTime(new Date(Date.now() + 10 * 60_000));
-    const late = await s.t.fetch("/n8n/overdue-loans", { method: "GET", headers: { "x-lendloop-timestamp": timestamp, "x-lendloop-signature": signature } });
+    const late = await s.t.fetch("/n8n/overdue-loans", {
+      method: "GET",
+      headers: { "x-lendloop-timestamp": timestamp, "x-lendloop-signature": signature },
+    });
     expect(late.status).toBe(401);
   });
 
@@ -242,7 +360,9 @@ describe("n8n HTTP endpoints", () => {
     expect(data.asOf).toBe("2026-11-28");
     expect(data.loans).toHaveLength(1);
     expect(data.loans[0]).toMatchObject({
-      requestId: req, dedupeKey: `reminder:${req}:2026-11-28`, daysOverdue: 3,
+      requestId: req,
+      dedupeKey: `reminder:${req}:2026-11-28`,
+      daysOverdue: 3,
       borrower: { name: "Bob", email: "bob@example.com" },
     });
     expect(JSON.stringify(data)).not.toContain("alice");
@@ -291,9 +411,19 @@ describe("outgoing notification", () => {
     const req = await s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" });
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    await s.t.action(internal.notifications.deliver, { requestId: req, event: "created", recipient: "owner", attempt: 1 });
+    await s.t.action(internal.notifications.deliver, {
+      requestId: req,
+      event: "created",
+      recipient: "owner",
+      attempt: 1,
+    });
     // a second call (e.g. a retry) does not duplicate the activity row
-    await s.t.action(internal.notifications.deliver, { requestId: req, event: "created", recipient: "owner", attempt: 1 });
+    await s.t.action(internal.notifications.deliver, {
+      requestId: req,
+      event: "created",
+      recipient: "owner",
+      attempt: 1,
+    });
     vi.unstubAllGlobals();
     expect(fetchSpy).not.toHaveBeenCalled();
     const events = await s.t.run((ctx) => ctx.db.query("automationEvents").collect());
@@ -310,8 +440,17 @@ describe("outgoing notification", () => {
     await makeUsers(s);
     const toolId = await s.alice.mutation(api.tools.create, drill);
     const req = await s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" });
-    const p = await s.t.query(internal.notifications.payloadFor, { requestId: req, event: "created", recipient: "owner" });
-    expect(p).toMatchObject({ deliveryId: `request:${req}:created`, event: "created", toolName: "Cordless drill", recipient: { role: "owner", email: "alice@example.com" } });
+    const p = await s.t.query(internal.notifications.payloadFor, {
+      requestId: req,
+      event: "created",
+      recipient: "owner",
+    });
+    expect(p).toMatchObject({
+      deliveryId: `request:${req}:created`,
+      event: "created",
+      toolName: "Cordless drill",
+      recipient: { role: "owner", email: "alice@example.com" },
+    });
     expect(JSON.stringify(p)).not.toContain("bob");
   });
 
@@ -323,11 +462,19 @@ describe("outgoing notification", () => {
     process.env.N8N_REQUEST_WEBHOOK_URL = "https://n8n.example.test/webhook/lendloop-request";
     process.env.LENDLOOP_TO_N8N_SECRET = "lendloop-to-n8n-test";
     const calls: RequestInit[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: RequestInit) => {
-      calls.push(init);
-      return new Response("bad signature", { status: 401 });
-    }));
-    await s.t.action(internal.notifications.deliver, { requestId: req, event: "created", recipient: "owner", attempt: 1 });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        calls.push(init);
+        return new Response("bad signature", { status: 401 });
+      }),
+    );
+    await s.t.action(internal.notifications.deliver, {
+      requestId: req,
+      event: "created",
+      recipient: "owner",
+      attempt: 1,
+    });
     vi.unstubAllGlobals();
     expect(calls).toHaveLength(1);
     const headers = calls[0].headers as Record<string, string>;
