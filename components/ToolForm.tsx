@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { CATEGORIES, CATEGORY_LABELS, CONDITIONS, CONDITION_LABELS, type Category, type Condition } from "@/lib/format";
 import { LIMITS } from "@/convex/lib/rules";
 import { Button, ErrorText } from "./ui";
@@ -22,6 +22,7 @@ export function ToolForm({
   const [form, setForm] = useState<ToolInput>(
     initial ?? { name: "", category: "power_tools", condition: "good", description: "" },
   );
+  const uid = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,9 +43,9 @@ export function ToolForm({
   return (
     <form onSubmit={handle} className="grid gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
-        <label htmlFor="tool-name">Name</label>
+        <label htmlFor={`${uid}-name`}>Name</label>
         <input
-          id="tool-name"
+          id={`${uid}-name`}
           required
           maxLength={LIMITS.nameMax}
           placeholder="e.g. Cordless drill"
@@ -53,9 +54,9 @@ export function ToolForm({
         />
       </div>
       <div>
-        <label htmlFor="tool-category">Category</label>
+        <label htmlFor={`${uid}-category`}>Category</label>
         <select
-          id="tool-category"
+          id={`${uid}-category`}
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
         >
@@ -67,9 +68,9 @@ export function ToolForm({
         </select>
       </div>
       <div>
-        <label htmlFor="tool-condition">Condition</label>
+        <label htmlFor={`${uid}-condition`}>Condition</label>
         <select
-          id="tool-condition"
+          id={`${uid}-condition`}
           value={form.condition}
           onChange={(e) => setForm({ ...form, condition: e.target.value as Condition })}
         >
@@ -81,9 +82,9 @@ export function ToolForm({
         </select>
       </div>
       <div className="sm:col-span-2">
-        <label htmlFor="tool-description">Short description</label>
+        <label htmlFor={`${uid}-description`}>Short description</label>
         <textarea
-          id="tool-description"
+          id={`${uid}-description`}
           required
           rows={2}
           maxLength={LIMITS.descriptionMax}
