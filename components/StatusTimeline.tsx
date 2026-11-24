@@ -19,7 +19,13 @@ type Step = {
 const stamp = (ms?: number) =>
   ms === undefined
     ? undefined
-    : new Date(ms).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    : new Date(ms).toLocaleString("en-GB", {
+        timeZone: "Africa/Lagos",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
 
 const ringTone = {
   pending: "border-pending text-pending",

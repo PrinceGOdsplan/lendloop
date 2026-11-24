@@ -136,14 +136,14 @@ function AdminContent() {
       </section>
 
       <Card className="mb-8 p-0">
-        <div className="flex flex-col gap-3 border-b border-line p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col-reverse gap-3 border-b border-line p-4">
           <FilterChips
             label="Filter by status"
             value={status}
             onChange={(f) => router.replace(f === "all" ? pathname : `${pathname}?status=${f}`, { scroll: false })}
             chips={FILTERS.map((f) => ({ key: f, label: LABELS[f], count: rows ? chipCount(f) : undefined }))}
           />
-          <div className="lg:w-64">
+          <div className="sm:max-w-xs">
             <label htmlFor="admin-search" className="sr-only">
               Search tool or person
             </label>
@@ -302,7 +302,7 @@ function AdminContent() {
               <ul className="space-y-3 text-sm">
                 {audit.map((e) => (
                   <li key={e._id}>
-                    <strong>{e.actorName}</strong>{" "}
+                    <strong>{e.byViewer ? "You" : e.actorName}</strong>{" "}
                     {e.action === "trusted_set"
                       ? `marked ${e.targetName} as Trusted Lender`
                       : e.action === "trusted_unset"

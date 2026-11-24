@@ -90,13 +90,14 @@ export const overview = query({
 export const auditTrail = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const viewer = await requireAdmin(ctx);
     const events = await ctx.db.query("adminEvents").withIndex("by_created").order("desc").take(20);
     return await Promise.all(
       events.map(async (e) => ({
         _id: e._id,
         action: e.action,
         createdAt: e.createdAt,
+        byViewer: e.actorId === viewer._id,
         actorName: (await ctx.db.get(e.actorId))?.name ?? "Former admin",
         targetName: e.targetUserId ? ((await ctx.db.get(e.targetUserId))?.name ?? "Former neighbour") : undefined,
         toolName: e.toolId ? ((await ctx.db.get(e.toolId))?.name ?? "Removed tool") : undefined,

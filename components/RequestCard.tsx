@@ -138,7 +138,7 @@ function patchStatus(store: OptimisticLocalStore, requestId: Id<"requests">, sta
 const initials = (name?: string) =>
   (name ?? "?")
     .split(/\s+/)
-    .filter((w) => /\w/.test(w))
+    .filter((w) => /^[\p{L}\p{N}]/u.test(w))
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join("");

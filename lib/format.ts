@@ -31,7 +31,7 @@ export function timeAgo(ms: number, now: number = Date.now()): string {
 }
 
 export function formatDate(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en", {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",
