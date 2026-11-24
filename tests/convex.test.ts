@@ -282,6 +282,29 @@ describe("n8n HTTP endpoints", () => {
 });
 
 describe("outgoing notification", () => {
+  it("degrades gracefully when n8n is not configured (demo deployments)", async () => {
+    const s = setup();
+    await makeUsers(s);
+    delete process.env.N8N_REQUEST_WEBHOOK_URL;
+    delete process.env.LENDLOOP_TO_N8N_SECRET;
+    const toolId = await s.alice.mutation(api.tools.create, drill);
+    const req = await s.bob.mutation(api.requests.create, { toolId, startDate: "2026-11-25", endDate: "2026-11-26" });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    await s.t.action(internal.notifications.deliver, { requestId: req, event: "created", recipient: "owner", attempt: 1 });
+    // a second call (e.g. a retry) does not duplicate the activity row
+    await s.t.action(internal.notifications.deliver, { requestId: req, event: "created", recipient: "owner", attempt: 1 });
+    vi.unstubAllGlobals();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    const events = await s.t.run((ctx) => ctx.db.query("automationEvents").collect());
+    expect(events.map((e) => e.type)).toEqual(["notification_skipped"]);
+    // the borrowing flow itself is unaffected
+    await s.alice.mutation(api.requests.decide, { requestId: req, decision: "approved" });
+    const mine = await s.bob.query(api.requests.mine, {});
+    expect(mine[0].status).toBe("approved");
+    expect(mine[0].activity[0].message).toMatch(/isn't configured/);
+  });
+
   it("payload contains only the recipient's contact, not the other party's", async () => {
     const s = setup();
     await makeUsers(s);

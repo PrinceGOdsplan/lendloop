@@ -28,6 +28,7 @@ export const statusValidator = v.union(
 export const automationTypeValidator = v.union(
   v.literal("request_notification"),
   v.literal("notification_failed"),
+  v.literal("notification_skipped"),
   v.literal("overdue_reminder"),
 );
 

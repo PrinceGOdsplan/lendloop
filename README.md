@@ -211,7 +211,7 @@ Templates with placeholders only: `.env.example`, `.env.convex.example`, `n8n/.e
 | `LENDLOOP_CONVEX_SITE_URL` | `n8n/.env` | Convex HTTP Actions base URL (`*.convex.site`) |
 | `GENERIC_TIMEZONE` | `n8n/.env` | Timezone for the daily 08:00 schedule |
 
-If the webhook URL or secret is missing, Convex doesn’t fail silently. It logs a warning and the loan shows “Notification could not be delivered (automation not configured)”. If `N8N_TO_LENDLOOP_SECRET` is missing, the HTTP endpoints **fail closed** with a 503.
+If the webhook URL or secret is missing (for example on the public demo), nothing breaks. Borrowing works normally, Convex logs that it skipped the notification, and the loan shows a neutral “ⓘ Notification not sent: automation isn’t configured on this deployment”. If `N8N_TO_LENDLOOP_SECRET` is missing, the HTTP endpoints **fail closed** with a 503.
 
 ---
 
@@ -315,4 +315,4 @@ scripts/check-workflows.mjs
 
 ## Production
 
-See [PRODUCTION.md](PRODUCTION.md) for what I would change before running this for real.
+See [PRODUCTION.md](PRODUCTION.md) for what I would change before running this for real, and [docs/DEPLOY.md](docs/DEPLOY.md) for the live demo setup (Vercel + Convex).
