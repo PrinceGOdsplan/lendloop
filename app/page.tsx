@@ -5,7 +5,8 @@ import { connection } from "next/server";
 import { preloadQuery, preloadedQueryResult } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { PublicToolList } from "@/components/PublicToolList";
-import { DemoAccess } from "@/components/DemoAccess";
+import { DemoSlot } from "@/components/DemoSlot";
+import { isDemoParams } from "@/lib/demo";
 import { Card, Pill } from "@/components/ui";
 
 async function preloadPublicTools() {
@@ -31,7 +32,7 @@ export default async function HomePage({
 }) {
   const [preloaded, params] = await Promise.all([preloadPublicTools(), searchParams]);
   const count = preloaded ? preloadedQueryResult(preloaded).length : null;
-  const demo = Object.hasOwn(params, "demo");
+  const demo = isDemoParams(params);
   const button = "inline-flex min-h-10 items-center justify-center rounded-control px-4 py-2 text-sm font-semibold";
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6">
@@ -90,24 +91,25 @@ export default async function HomePage({
               </a>
             </div>
           </div>
-          {demo ? (
-            <DemoAccess />
-          ) : (
-            <Card>
-              <h2 className="text-xl font-semibold">Less buying. More sharing.</h2>
-              <ol className="mt-5 space-y-5">
-                {steps.map(([title, body], i) => (
-                  <li key={title}>
-                    <p className="font-semibold">
-                      <span className="mr-3 font-mono text-sm text-brand">0{i + 1}</span>
-                      {title}
-                    </p>
-                    <p className="ml-8 mt-1 text-sm text-muted">{body}</p>
-                  </li>
-                ))}
-              </ol>
-            </Card>
-          )}
+          <DemoSlot
+            initial={demo}
+            fallback={
+              <Card>
+                <h2 className="text-xl font-semibold">Less buying. More sharing.</h2>
+                <ol className="mt-5 space-y-5">
+                  {steps.map(([title, body], i) => (
+                    <li key={title}>
+                      <p className="font-semibold">
+                        <span className="mr-3 font-mono text-sm text-brand">0{i + 1}</span>
+                        {title}
+                      </p>
+                      <p className="ml-8 mt-1 text-sm text-muted">{body}</p>
+                    </li>
+                  ))}
+                </ol>
+              </Card>
+            }
+          />
         </section>
         <section id="how" aria-label="How it works" className="grid scroll-mt-6 gap-4 pb-14 sm:grid-cols-3">
           {steps.map(([title, body], i) => (
