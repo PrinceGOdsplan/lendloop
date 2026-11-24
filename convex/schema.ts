@@ -33,6 +33,14 @@ export const automationTypeValidator = v.union(
 );
 
 export default defineSchema({
+  adminEvents: defineTable({
+    actorId: v.id("users"),
+    action: v.union(v.literal("trusted_set"), v.literal("trusted_unset"), v.literal("listing_removed")),
+    targetUserId: v.optional(v.id("users")),
+    toolId: v.optional(v.id("tools")),
+    createdAt: v.number(),
+  }).index("by_created", ["createdAt"]),
+
   users: defineTable({
     // Clerk identity `tokenIdentifier` (issuer + subject): globally unique, never reused.
     tokenIdentifier: v.string(),

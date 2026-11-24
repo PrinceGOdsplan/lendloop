@@ -46,10 +46,14 @@ export CONVEX_DEPLOY_KEY=…            # the production key, in your shell only
 npx convex run seed:demo               # needs LENDLOOP_ALLOW_SEED=true on production
 # sign in once on the live site as the demo admin, then:
 npx convex run users:setRole '{"email":"demo-admin+clerk_test@example.com","role":"admin"}'
+# after both test accounts have signed in once: one pending request for each,
+# an active loan, an overdue loan and a returned loan (idempotent, no notifications)
+npx convex run seed:reviewerScenario
 npx convex env remove LENDLOOP_ALLOW_SEED
 ```
 
 ## 5. Checks after deploying
+- `/?demo` shows the reviewer panel with both test logins. Plain `/` shows “How it works” instead, so the admin login isn't advertised.
 - `/` loads signed out and lists the seeded tools, with name and category only.
 - Sign in, list a tool, request it from a second account, and approve it. The loan shows “ⓘ Notification not sent: automation isn’t configured on this deployment”.
 - `curl -i https://<prod>.convex.site/n8n/overdue-loans` returns `503` (no secret configured), not data.

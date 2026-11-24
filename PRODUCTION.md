@@ -22,7 +22,7 @@ This take-home is built to be correct and easy to review, not to carry real user
 ## 4. Privacy, data and compliance
 - **Retention:** prune `automationEvents` and n8n executions on a schedule (n8n is already set to 7 days in `docker-compose.yml`), and redact recipient emails from n8n execution data.
 - **Account deletion:** handle Clerk `user.deleted` webhooks (verified with Svix) to anonymise the `users` row and remove the email while keeping loan history consistent.
-- **Admin audit trail:** record who removed a listing or changed Trusted Lender, and when. `removedBy` is only a first step.
+- **Admin audit trail:** done for trust and removals. `adminEvents` records who changed Trusted Lender or removed a listing, and when, and the Admin page shows the last 20. Next step: export it with the backups and cover role changes once roles move to Clerk.
 - **Backups:** scheduled Convex exports to encrypted object storage (S3), with a tested restore.
 
 ## 5. Product and correctness

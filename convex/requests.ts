@@ -16,7 +16,6 @@ import {
 } from "./lib/rules";
 import type { NotifyEvent } from "./lib/automation";
 
-
 async function scheduleNotification(
   ctx: MutationCtx,
   requestId: Id<"requests">,
@@ -41,7 +40,7 @@ async function activityFor(ctx: QueryCtx, requestId: Id<"requests">) {
   return events.map((e) => ({ type: e.type, message: e.message, createdAt: e.createdAt }));
 }
 
-async function hydrate(
+export async function hydrate(
   ctx: QueryCtx,
   r: Doc<"requests">,
   opts: { includeBorrower: boolean; includeOwner: boolean },
@@ -51,6 +50,11 @@ async function hydrate(
   const owner = opts.includeOwner ? await ctx.db.get(r.ownerId) : null;
   return {
     _id: r._id,
+    toolId: r.toolId,
+    toolCategory: tool?.category,
+    decidedAt: r.decidedAt,
+    returnedAt: r.returnedAt,
+    updatedAt: r.updatedAt,
     status: r.status,
     startDate: r.startDate,
     endDate: r.endDate,
@@ -86,10 +90,7 @@ export const create = mutation({
     }
     if (
       existing.some(
-        (r) =>
-          r.borrowerId === viewer._id &&
-          r.status === "pending" &&
-          rangesOverlap(r, { startDate, endDate }),
+        (r) => r.borrowerId === viewer._id && r.status === "pending" && rangesOverlap(r, { startDate, endDate }),
       )
     ) {
       throw new ConvexError("You already have a pending request for these dates");
@@ -147,7 +148,12 @@ export const decide = mutation({
         .query("requests")
         .withIndex("by_tool", (q) => q.eq("toolId", request.toolId))
         .collect();
-      if (conflictsWithApprovedLoan(request, others.filter((o) => o._id !== request._id))) {
+      if (
+        conflictsWithApprovedLoan(
+          request,
+          others.filter((o) => o._id !== request._id),
+        )
+      ) {
         throw new ConvexError("These dates overlap a loan you already approved");
       }
     }
@@ -170,12 +176,7 @@ export const markReturned = mutation({
     const now = Date.now();
     await ctx.db.patch(requestId, { status: "returned", returnedAt: now, updatedAt: now });
     // Tell the other party.
-    await scheduleNotification(
-      ctx,
-      requestId,
-      "returned",
-      viewer._id === request.borrowerId ? "owner" : "borrower",
-    );
+    await scheduleNotification(ctx, requestId, "returned", viewer._id === request.borrowerId ? "owner" : "borrower");
   },
 });
 
@@ -189,9 +190,7 @@ export const mine = query({
       .withIndex("by_borrower", (q) => q.eq("borrowerId", viewer._id))
       .order("desc")
       .take(100);
-    return await Promise.all(
-      rows.map((r) => hydrate(ctx, r, { includeBorrower: false, includeOwner: true })),
-    );
+    return await Promise.all(rows.map((r) => hydrate(ctx, r, { includeBorrower: false, includeOwner: true })));
   },
 });
 
@@ -205,9 +204,7 @@ export const incoming = query({
       .withIndex("by_owner", (q) => q.eq("ownerId", viewer._id))
       .order("desc")
       .take(100);
-    return await Promise.all(
-      rows.map((r) => hydrate(ctx, r, { includeBorrower: true, includeOwner: false })),
-    );
+    return await Promise.all(rows.map((r) => hydrate(ctx, r, { includeBorrower: true, includeOwner: false })));
   },
 });
 
@@ -226,8 +223,6 @@ export const allLoans = query({
       .order("desc")
       .take(200);
     const rows = [...approved, ...returned].sort((a, b) => b.createdAt - a.createdAt);
-    return await Promise.all(
-      rows.map((r) => hydrate(ctx, r, { includeBorrower: true, includeOwner: true })),
-    );
+    return await Promise.all(rows.map((r) => hydrate(ctx, r, { includeBorrower: true, includeOwner: true })));
   },
 });

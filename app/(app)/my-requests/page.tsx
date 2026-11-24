@@ -2,27 +2,19 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { RequestCard } from "@/components/RequestCard";
-import { EmptyState, Loading, PageHeader } from "@/components/ui";
+import { RequestList } from "@/components/RequestList";
 
 export default function MyRequestsPage() {
   const rows = useQuery(api.requests.mine);
   return (
-    <>
-      <PageHeader title="My requests" subtitle="Tools you’ve asked to borrow." />
-      {rows === undefined ? (
-        <Loading />
-      ) : rows.length === 0 ? (
-        <EmptyState title="No requests yet">Find something under “All tools” and request it.</EmptyState>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((row) => (
-            <li key={row._id}>
-              <RequestCard row={row} perspective="borrower" />
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
+    <RequestList
+      rows={rows}
+      perspective="borrower"
+      title="My requests"
+      subtitle="Tools you asked to borrow, from request to return."
+      labels={{ all: "All", pending: "Pending", active: "On loan", history: "History" }}
+      initial="all"
+      empty={{ title: "No requests yet", body: "Find something under “Tools” and request it." }}
+    />
   );
 }

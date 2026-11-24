@@ -46,6 +46,7 @@ export function ToolForm({
         <label htmlFor={`${uid}-name`}>Name</label>
         <input
           id={`${uid}-name`}
+          aria-describedby={error ? `${uid}-error` : undefined}
           required
           maxLength={LIMITS.nameMax}
           placeholder="e.g. Cordless drill"
@@ -57,6 +58,7 @@ export function ToolForm({
         <label htmlFor={`${uid}-category`}>Category</label>
         <select
           id={`${uid}-category`}
+          aria-describedby={error ? `${uid}-error` : undefined}
           value={form.category}
           onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
         >
@@ -71,6 +73,7 @@ export function ToolForm({
         <label htmlFor={`${uid}-condition`}>Condition</label>
         <select
           id={`${uid}-condition`}
+          aria-describedby={error ? `${uid}-error` : undefined}
           value={form.condition}
           onChange={(e) => setForm({ ...form, condition: e.target.value as Condition })}
         >
@@ -85,6 +88,7 @@ export function ToolForm({
         <label htmlFor={`${uid}-description`}>Short description</label>
         <textarea
           id={`${uid}-description`}
+          aria-describedby={error ? `${uid}-error` : undefined}
           required
           rows={2}
           maxLength={LIMITS.descriptionMax}
@@ -102,7 +106,7 @@ export function ToolForm({
             Cancel
           </Button>
         )}
-        <ErrorText message={error} />
+        <ErrorText id={`${uid}-error`} message={error} />
       </div>
     </form>
   );

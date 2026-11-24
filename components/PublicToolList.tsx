@@ -30,13 +30,30 @@ function ToolGrid({ tools }: { tools: Tools | undefined }) {
     return <EmptyState title="No tools available right now">Be the first neighbour to lend something.</EmptyState>;
   }
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {tools.map((tool, i) => (
-        <li key={`${tool.name}-${i}`} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3">
-          <span className="font-medium">{tool.name}</span>
-          <Pill>{CATEGORY_LABELS[tool.category]}</Pill>
-        </li>
-      ))}
-    </ul>
+    <>
+      <h2 className="mb-5 text-lg font-semibold">{tools.length} tools ready to borrow</h2>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {tools.map((tool, i) => (
+          <li
+            key={`${tool.name}-${i}`}
+            className="flex items-center justify-between gap-3 rounded-card border border-line bg-white px-4 py-4"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                aria-hidden
+                className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg bg-stone-100 text-xs font-semibold text-brand"
+              >
+                {tool.name[0]}
+              </span>
+              <div>
+                <h3 className="text-sm font-semibold">{tool.name}</h3>
+                <p className="mt-1 text-xs text-muted">{CATEGORY_LABELS[tool.category]}</p>
+              </div>
+            </div>
+            <Pill tone="green">● Free today</Pill>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

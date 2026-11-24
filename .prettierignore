@@ -1,0 +1,23 @@
+# Generated or vendored
+node_modules
+.next
+convex/_generated
+package-lock.json
+n8n/workflows
+docs/screenshots
+public
+
+# Security-sensitive code kept byte-for-byte as reviewed (auth, HMAC, n8n flow, rules)
+convex/http.ts
+convex/lib/hmac.ts
+convex/lib/auth.ts
+convex/lib/rules.ts
+convex/lib/automation.ts
+convex/automation.ts
+convex/notifications.ts
+tests/hmac.test.ts
+tests/rules.test.ts
+
+# Prose
+*.md
+tsconfig.json
