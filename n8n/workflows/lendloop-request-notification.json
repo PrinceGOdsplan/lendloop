@@ -1,0 +1,258 @@
+{
+  "id": "LLrequestNotify1",
+  "name": "LendLoop \u2013 Request notification",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lendloop-request",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "3095162b-3254-5df8-8b65-60e074d0b2f3",
+      "name": "Convex request webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "8f1d2c3a-5b7e-4c1a-9d2f-6e0a1b2c3d4e"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify Convex's HMAC signature over the RAW request body before trusting anything.\n// Signed string: `${timestamp}.POST./lendloop-request.${rawBody}` (see convex/lib/hmac.ts).\nconst crypto = require('crypto');\nconst secret = $env.LENDLOOP_TO_N8N_SECRET;\nconst TOLERANCE_SECONDS = 300;\nconst item = $input.first();\nconst headers = item.json.headers || {};\nconst timestamp = String(headers['x-lendloop-timestamp'] || '');\nconst signature = String(headers['x-lendloop-signature'] || '');\n\nlet raw = '';\nif (item.binary && item.binary.data) {\n  const buf = await this.helpers.getBinaryDataBuffer(0, 'data');\n  raw = buf.toString('utf8');\n}\n\nfunction reject(reason) {\n  console.warn('[lendloop] rejected request webhook:', reason);\n  return [{ json: { accept: false, httpStatus: reason === 'secret_not_configured' ? 503 : 401, reason } }];\n}\n\nif (!secret) return reject('secret_not_configured');\nif (!timestamp || !signature) return reject('missing_headers');\nconst m = /^sha256=([0-9a-f]{64})$/.exec(signature);\nif (!m) return reject('malformed_signature');\nif (!/^\\d{1,12}$/.test(timestamp) || Math.abs(Date.now() / 1000 - Number(timestamp)) > TOLERANCE_SECONDS) {\n  return reject('stale_timestamp');\n}\nconst expected = crypto.createHmac('sha256', secret)\n  .update(`${timestamp}.POST./lendloop-request.${raw}`)\n  .digest();\nconst given = Buffer.from(m[1], 'hex');\nif (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {\n  return reject('signature_mismatch');\n}\n\nlet payload;\ntry { payload = JSON.parse(raw); } catch (e) { return reject('invalid_json'); }\n\n// Replay / retry guard: remember recent deliveryIds (persists for active workflows).\nconst seen = $getWorkflowStaticData('global');\nseen.deliveries = seen.deliveries || {};\nif (seen.deliveries[payload.deliveryId]) {\n  return [{ json: { accept: false, httpStatus: 200, reason: 'duplicate', deliveryId: payload.deliveryId } }];\n}\nseen.deliveries[payload.deliveryId] = Date.now();\nconst keys = Object.keys(seen.deliveries);\nif (keys.length > 500) keys.slice(0, keys.length - 500).forEach((k) => delete seen.deliveries[k]);\n\n// Pass on only the fields the notification needs (no headers, no raw body).\nconst { deliveryId, event, requestId, status, toolName, startDate, endDate, recipient } = payload;\nreturn [{ json: { accept: true, deliveryId, event, requestId, status, toolName, startDate, endDate, recipient } }];\n"
+      },
+      "id": "0c17b6fe-bc2c-5dcc-9438-ab64d45247e8",
+      "name": "Verify HMAC signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0f7199a6-0860-59da-88fa-ec3d66c928b4",
+              "leftValue": "={{ $json.accept }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d173938e-0137-533d-91be-599536520877",
+      "name": "Accepted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, deliveryId: $json.deliveryId }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "id": "e8997c17-54ae-5329-a2c8-c89fbf304c66",
+      "name": "Respond 202 Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.reason === 'duplicate' ? { ok: true, duplicate: true } : { error: 'unauthorized' }) }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "id": "171444b2-150a-5c19-a6ba-ebd43fd45ffc",
+      "name": "Respond rejected / duplicate",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock notification: builds the message and logs it. Swap this node for an\n// Email (SMTP/Resend) or Slack node in production. Uses only the fields it needs.\nconst p = $input.first().json;\nconst range = `${p.startDate} to ${p.endDate}`;\nconst subjects = {\n  created: `New request to borrow your ${p.toolName}`,\n  approved: `Your request for the ${p.toolName} was approved`,\n  declined: `Your request for the ${p.toolName} was declined`,\n  returned: `${p.toolName} marked as returned`,\n};\nconst bodies = {\n  created: `A neighbour asked to borrow your ${p.toolName} (${range}). Open LendLoop to approve or decline.`,\n  approved: `Good news: you can borrow the ${p.toolName} (${range}). Please return it by ${p.endDate}.`,\n  declined: `Your request for the ${p.toolName} (${range}) was declined. Try another date or tool.`,\n  returned: `The loan of the ${p.toolName} (${range}) has been marked as returned. Thanks!`,\n};\nconst notification = {\n  channel: p.recipient?.email ? 'mock-email' : 'log-only (no email on file)',\n  to: p.recipient?.email ?? null,\n  recipientName: p.recipient?.name,\n  subject: subjects[p.event] ?? 'LendLoop update',\n  text: `Hi ${p.recipient?.name ?? 'there'}, ${bodies[p.event] ?? ''}`,\n};\nconsole.log('[lendloop] MOCK NOTIFICATION', JSON.stringify(notification));\nreturn [{ json: { ...p, notification, notifiedAt: new Date().toISOString() } }];\n"
+      },
+      "id": "95828103-2ce7-5770-9a27-fd218d7728d8",
+      "name": "Send notification (mock)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// HMAC-SHA256 over `${timestamp}.${METHOD}.${path}.${body}` (see convex/lib/hmac.ts).\n// The secret comes from the n8n host environment, never from this workflow JSON.\nconst crypto = require('crypto');\nconst secret = $env.N8N_TO_LENDLOOP_SECRET;\nif (!secret) throw new Error('N8N_TO_LENDLOOP_SECRET is not set on the n8n host');\nfunction sign(method, path, body) {\n  const timestamp = String(Math.floor(Date.now() / 1000));\n  const hex = crypto.createHmac('sha256', secret)\n    .update(`${timestamp}.${method}.${path}.${body}`)\n    .digest('hex');\n  return { timestamp, signature: `sha256=${hex}` };\n}\n\n// Idempotent write-back: the deliveryId is the dedupe key, so retries are harmless.\nconst p = $input.first().json;\nconst body = JSON.stringify({\n  requestId: p.requestId,\n  type: 'request_notification',\n  dedupeKey: p.deliveryId,\n  recipientRole: p.recipient?.role,\n});\nreturn [{ json: { body, ...sign('POST', '/n8n/events', body) } }];\n"
+      },
+      "id": "c0b67b47-03a5-528b-b402-f57eb1f78eb4",
+      "name": "Sign write-back",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LENDLOOP_CONVEX_SITE_URL }}/n8n/events",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-lendloop-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-lendloop-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "f2b3bfc0-a356-5793-a47e-d6fb56899f1b",
+      "name": "Record activity in Convex",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Convex request webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify HMAC signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify HMAC signature": {
+      "main": [
+        [
+          {
+            "node": "Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Respond 202 Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond rejected / duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond 202 Accepted": {
+      "main": [
+        [
+          {
+            "node": "Send notification (mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send notification (mock)": {
+      "main": [
+        [
+          {
+            "node": "Sign write-back",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sign write-back": {
+      "main": [
+        [
+          {
+            "node": "Record activity in Convex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "LLerrorWorkflow1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "staticData": null,
+  "pinData": {},
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

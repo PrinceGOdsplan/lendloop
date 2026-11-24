@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# keep the documented templates (placeholders only)
+!.env*.example
+
+# local n8n test data
+n8n/data/

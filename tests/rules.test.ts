@@ -25,9 +25,12 @@ describe("availability", () => {
     expect(isToolAvailable([{ status: "approved", startDate: today, endDate: today }], today)).toBe(false);
     expect(isToolAvailable([{ status: "approved", startDate: "2026-11-20", endDate: "2026-11-30" }], today)).toBe(false);
   });
-  it("is available when the approved loan is in the future or past", () => {
+  it("is available when the only approved loan starts in the future", () => {
     expect(isToolAvailable([{ status: "approved", startDate: "2026-11-25", endDate: "2026-11-30" }], today)).toBe(true);
-    expect(isToolAvailable([{ status: "approved", startDate: "2026-11-01", endDate: "2026-11-23" }], today)).toBe(true);
+  });
+  it("stays unavailable while a loan is overdue (ended but not returned)", () => {
+    expect(isToolAvailable([{ status: "approved", startDate: "2026-11-01", endDate: "2026-11-23" }], today)).toBe(false);
+    expect(isToolAvailable([{ status: "returned", startDate: "2026-11-01", endDate: "2026-11-23" }], today)).toBe(true);
   });
 });
 

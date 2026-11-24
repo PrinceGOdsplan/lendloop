@@ -1,0 +1,55 @@
+{
+  "id": "LLerrorWorkflow1",
+  "name": "LendLoop \u2013 Error handler",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8a70a276-a534-5ab6-87a7-e8e38492c6d7",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Runs whenever a LendLoop workflow execution fails (after node retries are exhausted).\n// Logs only metadata: no payloads, so no personal data ends up in logs.\nconst e = $input.first().json;\nconst record = {\n  alert: 'lendloop_workflow_failed',\n  workflow: e.workflow?.name,\n  workflowId: e.workflow?.id,\n  executionId: e.execution?.id ?? null,\n  executionUrl: e.execution?.url ?? null,\n  failedNode: e.execution?.lastNodeExecuted ?? e.trigger?.error?.node?.name ?? null,\n  message: e.execution?.error?.message ?? e.trigger?.error?.message ?? 'unknown error',\n  at: new Date().toISOString(),\n};\nconsole.error('[lendloop] WORKFLOW FAILED', JSON.stringify(record));\n// Production: add an Email / Slack / PagerDuty node after this one.\nreturn [{ json: record }];\n"
+      },
+      "id": "101ca56b-f2b3-542d-88d9-fabf22273068",
+      "name": "Log failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "staticData": null,
+  "pinData": {},
+  "tags": [],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

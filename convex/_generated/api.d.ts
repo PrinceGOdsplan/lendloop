@@ -17,6 +17,7 @@ import type * as lib_hmac from "../lib/hmac.js";
 import type * as lib_rules from "../lib/rules.js";
 import type * as notifications from "../notifications.js";
 import type * as requests from "../requests.js";
+import type * as seed from "../seed.js";
 import type * as tools from "../tools.js";
 import type * as users from "../users.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   "lib/rules": typeof lib_rules;
   notifications: typeof notifications;
   requests: typeof requests;
+  seed: typeof seed;
   tools: typeof tools;
   users: typeof users;
 }>;

@@ -98,13 +98,13 @@ export function isActiveLoan(r: { status: RequestStatus }): boolean {
 }
 
 /**
- * A tool is available unless it has an approved, unreturned loan whose
- * range includes today. Pending requests do not make it unavailable.
+ * A tool is unavailable while it is physically out: an approved, unreturned
+ * loan that has started (its range includes today, OR it is overdue — the
+ * end date has passed but nobody marked it returned). Pending requests and
+ * future approved loans do not make it unavailable today.
  */
 export function isToolAvailable(requests: LoanLike[], today: string): boolean {
-  return !requests.some(
-    (r) => isActiveLoan(r) && r.startDate <= today && today <= r.endDate,
-  );
+  return !requests.some((r) => isActiveLoan(r) && r.startDate <= today);
 }
 
 /** Approving `candidate` must not overlap another approved, unreturned loan. */
